@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🗓️ My-Calendar
 
 A lightweight calendar app for managing events. No bloat—just a clean calendar that works in your browser.
