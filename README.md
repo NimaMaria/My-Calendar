@@ -2,6 +2,9 @@
 
 A lightweight calendar app for managing events. No bloat—just a clean calendar that works in your browser.
 
+<img width="1877" height="909" alt="My-calendar-photo" src="https://github.com/user-attachments/assets/bbd3815d-f12e-48b8-b2cf-e2bcba1b1200" />
+
+
 ## ✨ Features
 
 - **📅 Month Calendar** – Navigate months, view all events
