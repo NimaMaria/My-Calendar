@@ -42,11 +42,9 @@ Enable "Popup" reminder when creating an event. You'll get a notification for to
 
 ## 🔧 Development
 
-### Setup
+### How to run
 Just open `index.html` in a browser, or run a local server:
-```bash
-python -m http.server 8000
-# or
+
 Right click index.html - Open with Live Server
 ```
 
