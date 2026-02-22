@@ -19,6 +19,7 @@
     addBtn: $("addBtn"),
     editBtn: $("editBtn"),
     deleteSideBtn: $("deleteSideBtn"),
+    exportBtn: $("exportBtn"),
 
     // modal
     modal: $("eventModal"),
@@ -106,9 +107,11 @@
 
     els.deleteSideBtn.addEventListener("click", () => {
       if(!selectedEventId) return toast("Select an event first");
-      editingId = selectedEventId; // reuse delete logic
+      editingId = selectedEventId;
       onDelete();
     });
+
+    els.exportBtn.addEventListener("click", exportEvents);
 
     els.closeBtn.addEventListener("click", closeModal);
     els.cancelBtn.addEventListener("click", closeModal);
@@ -262,7 +265,7 @@
     if(!dayEvents.length){
       const empty = document.createElement("div");
       empty.className = "day-item";
-      empty.innerHTML = `<div class="top"><div class="title">No events</div><div class="tag">—</div></div><div class="meta">Click “Add Event” to create one.</div>`;
+      empty.innerHTML = `<div class="top"><div class="title">No events</div><div class="tag">—</div></div><div class="meta">Click "Add Event" to create one.</div>`;
       empty.addEventListener("click", () => openModalForDate(selectedDate));
       els.dayList.appendChild(empty);
       return;
@@ -422,6 +425,29 @@
   function showModal(){ els.backdrop.hidden = false; els.modal.showModal(); }
   function closeModal(){ els.modal.close(); els.backdrop.hidden = true; }
 
+  // ---------- EXPORT EVENTS ----------
+  function exportEvents(){
+    if(events.length === 0){ toast("No events to export!"); return; }
+
+    const sorted = [...events].sort((a,b) => a.date.localeCompare(b.date));
+
+    const content = sorted.map((ev, i) => {
+      const time = (ev.start && ev.end) ? `${ev.start} – ${ev.end}` : "All day";
+      const desc = ev.description ? `\n   Description: ${ev.description}` : "";
+      const remind = ev.remindMode === "popup" ? "\n   🔔 Reminder enabled" : "";
+      return `Event ${i+1}:\n   Title: ${ev.title}\n   Date: ${ev.date}\n   Time: ${time}${desc}${remind}`;
+    }).join("\n\n---\n\n");
+
+    const blob = new Blob([content], { type:"text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "my-calendar-events.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Events exported!");
+  }
+
   // ---------- SEARCH / CONFLICTS ----------
   function formatSearch(ev){
     return (ev.title + " " + (ev.description || "")).toLowerCase();
@@ -481,14 +507,9 @@
   }
 
   // ---------- POPUP REMINDERS (YESTERDAY + TODAY) ----------
-  // Rule:
-  // - If event is TOMORROW and reminder enabled => popup today
-  // - If event is TODAY and reminder enabled => popup today
-  // Shows once per day (no repeat spam)
   function checkPopupReminders(){
     const todayKey = toDateKey(new Date());
 
-    // avoid repeating popup on refresh
     let seen = {};
     try{
       seen = JSON.parse(localStorage.getItem(POPUP_SEEN_KEY) || "{}");
@@ -562,26 +583,21 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { el.style.opacity = "0"; }, 1600);
   }
+
   function initTheme(){
-  const btn = document.getElementById("themeToggle");
+    const btn = document.getElementById("themeToggle");
 
-  // load saved theme
-  const saved = localStorage.getItem("calendar_theme");
-  if(saved === "dark"){
-    document.body.classList.add("dark");
-    btn.textContent = "☀️ Light";
+    const saved = localStorage.getItem("calendar_theme");
+    if(saved === "dark"){
+      document.body.classList.add("dark");
+      btn.textContent = "☀️ Light";
+    }
+
+    btn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      const isDark = document.body.classList.contains("dark");
+      btn.textContent = isDark ? "☀️ Light" : "🌙 Dark";
+      localStorage.setItem("calendar_theme", isDark ? "dark" : "light");
+    });
   }
-
-  btn.addEventListener("click", () => {
-    document.body.classList.toggle("dark");
-
-    const isDark = document.body.classList.contains("dark");
-
-    // change button text
-    btn.textContent = isDark ? "☀️ Light" : "🌙 Dark";
-
-    // save preference
-    localStorage.setItem("calendar_theme", isDark ? "dark" : "light");
-  });
-}
 })();
