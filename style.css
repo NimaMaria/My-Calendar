@@ -362,6 +362,38 @@ h1{margin:0;font-size:16px; font-weight:700; letter-spacing:.2px; color:#514e6b;
 .year-select:focus {
   box-shadow: 0 0 0 4px var(--focus);
 }
+/* Month + Year Dropdown Styling */
+.month-select,
+.year-select {
+  padding: 10px 16px;
+  border-radius: 30px;
+  border: 1px solid rgba(255,255,255,0.7);
+  background: rgba(255,245,247,0.8);
+  backdrop-filter: blur(4px);
+  font-weight: 700;
+  color: #514e6b;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 6px 12px rgba(185,164,255,0.15);
+  transition: all 0.25s ease;
+}
+
+/* Hover */
+.month-select:hover,
+.year-select:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(185,164,255,0.25);
+}
+
+/* Focus */
+.month-select:focus,
+.year-select:focus {
+  box-shadow: 0 0 0 4px var(--focus);
+}
+.month-select,
+.year-select {
+  background: linear-gradient(145deg, #fff5f7, #ffeef5);
+}
 /* ---------- DAYS OF WEEK ---------- */
 
 .dow{
@@ -720,6 +752,13 @@ body.dark .weekdays div {
   background: #eaecf0;
   color: #1e293b;
   font-weight: 600;
+}
+body.dark .month-select,
+body.dark .year-select {
+  background: #334155;
+  color: #f1f5f9;
+  border: 1px solid #475569;
+  box-shadow: none;
 }
 
 body.dark .cell .date span:first-child {

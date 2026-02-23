@@ -6,7 +6,7 @@
     prevBtn: $("prevBtn"),
     nextBtn: $("nextBtn"),
     todayBtn: $("todayBtn"),
-    monthLabel: $("monthLabel"),
+    monthSelect: $("monthSelect"),
     yearSelect: $("yearSelect"),
 
     // calendar + side
@@ -63,6 +63,7 @@
   renderDayPanel();
   checkPopupReminders();
   initYearDropdown();
+  initMonthDropdown();
   }
   function initYearDropdown(){
   const currentYear = new Date().getFullYear();
@@ -81,6 +82,29 @@
   els.yearSelect.addEventListener("change", function(){
     const selectedYear = parseInt(this.value);
     viewDate = new Date(selectedYear, viewDate.getMonth(), 1);
+    render();
+  });
+}
+function initMonthDropdown(){
+  const months = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
+  els.monthSelect.innerHTML = "";
+
+  months.forEach((month, index) => {
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent = month;
+    els.monthSelect.appendChild(option);
+  });
+
+  els.monthSelect.value = viewDate.getMonth();
+
+  els.monthSelect.addEventListener("change", function(){
+    const selectedMonth = parseInt(this.value);
+    viewDate = new Date(viewDate.getFullYear(), selectedMonth, 1);
     render();
   });
 }
@@ -133,7 +157,7 @@
     const y = viewDate.getFullYear();
     els.yearSelect.value = y;
     const m = viewDate.getMonth();
-    els.monthLabel.textContent = viewDate.toLocaleString(undefined, { month:"long", year:"numeric" });
+    els.monthSelect.value = m;
 
     const first = new Date(y, m, 1);
     const startDay = first.getDay(); // 0=Sun
