@@ -210,6 +210,21 @@ function initMonthDropdown(){
       .filter(ev => !q || formatSearch(ev).includes(q))
       .sort((a,b) => (a.start||"").localeCompare(b.start||""));
 
+     // ✅ FIX: Hide cells with no matching events when searching
+if(q && dayEvents.length === 0){
+
+  cell.style.display = "none";
+
+  els.grid.appendChild(cell);
+
+  return;
+
+}else{
+
+  cell.style.display = "";
+
+}
+
       if(dayEvents.length > 0){
       anyMatch = true;
       } 
@@ -226,26 +241,8 @@ function initMonthDropdown(){
         renderDayPanel();
       });
       // Show "No events found" only after checking all days
-if(q){
-  let noResultEl = document.getElementById("noResults");
 
-  if(!noResultEl){
-    noResultEl = document.createElement("div");
-    noResultEl.id = "noResults";
-    noResultEl.style.textAlign = "center";
-    noResultEl.style.padding = "10px";
-    noResultEl.style.fontWeight = "bold";
-    noResultEl.style.color = "red";
-    els.grid.parentNode.appendChild(noResultEl);
-  }
 
-  if(!anyMatch){
-    noResultEl.textContent = "No events found";
-    noResultEl.style.display = "block";
-  } else {
-    noResultEl.style.display = "none";
-  }
-}
 
       const head = document.createElement("div");
       head.className = "date";
