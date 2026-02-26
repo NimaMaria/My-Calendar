@@ -1057,6 +1057,7 @@ body.dark .notif-banner {
 }
 
 /* 🌙 DARK MODE SUPPORT FOR RECURRING EVENT CONTROLS */
+/* 🌙 DARK MODE SUPPORT FOR REPEAT BUTTON */
 body.dark .checkbox-field span {
   color: #cbd5e1;
 }
