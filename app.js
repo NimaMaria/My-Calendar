@@ -40,6 +40,20 @@
         notifBanner:      $("notifBanner"),
         notifAllowBtn:    $("notifAllowBtn"),
         notifDismissBtn:  $("notifDismissBtn"),
+        // import
+        importBtn:         $("importBtn"),
+        importModal:       $("importModal"),
+        importCloseBtn:    $("importCloseBtn"),
+        importCancelBtn:   $("importCancelBtn"),
+        importConfirmBtn:  $("importConfirmBtn"),
+        importFileInput:   $("importFileInput"),
+        importDrop:        $("importDrop"),
+        importDropLabel:   $("importDropLabel"),
+        importPreview:     $("importPreview"),
+        importPreviewCount:$("importPreviewCount"),
+        importPreviewSkip: $("importPreviewSkip"),
+        importPreviewList: $("importPreviewList"),
+        importError:       $("importError"),
     };
 
     const STORAGE_KEY     = "calendra_lite_events_v2";
@@ -69,6 +83,7 @@
         // Service worker + notification setup
         registerServiceWorker();
         initNotificationBanner();
+        initImportModal();
 
         // Check reminders immediately on load, then every 60 s
         checkPassiveReminders();
@@ -134,21 +149,35 @@
 
         els.notifAllowBtn.addEventListener("click", () => {
             console.log("[Notif] User clicked 'Enable Notifications' — requesting permission...");
-            Notification.requestPermission().then(perm => {
+
+            // Hide banner immediately on click — don't wait for the browser prompt to resolve
+            els.notifBanner.hidden = true;
+            localStorage.setItem(BANNER_DISMISSED_KEY, "1");
+
+            const onResult = (perm) => {
                 console.log("[Notif] Permission response:", perm);
-                els.notifBanner.hidden = true;
                 if (perm === "granted") {
                     console.log("[Notif] ✅ Permission GRANTED");
                     toast("🔔 Notifications enabled!");
                     syncEventsToSW();
-                    checkPassiveReminders(); // run immediately after grant
+                    checkPassiveReminders();
                 } else if (perm === "denied") {
                     console.warn("[Notif] ❌ Permission DENIED by user");
                     toast("Notifications blocked. Enable them in browser settings.");
                 } else {
                     console.log("[Notif] User dismissed the browser prompt (no choice made)");
                 }
-            });
+            };
+
+            // Support both Promise (modern) and callback (old Firefox) APIs
+            try {
+                const result = Notification.requestPermission(onResult);
+                if (result && typeof result.then === "function") {
+                    result.then(onResult);
+                }
+            } catch (err) {
+                console.error("[Notif] requestPermission() threw:", err);
+            }
         });
 
         els.notifDismissBtn.addEventListener("click", () => {
@@ -360,6 +389,7 @@
             editingId = selectedEventId; onDelete();
         });
         els.exportBtn.addEventListener("click", exportEvents);
+        els.importBtn.addEventListener("click", openImportModal);
         els.clearAllBtn.addEventListener("click", () => {
             if (!confirm("Are you sure you want to delete ALL events?")) return;
             events = []; saveEvents(events);
@@ -718,6 +748,250 @@
     }
 
     function addMonths(d, n) { return new Date(d.getFullYear(), d.getMonth() + n, 1); }
+
+    // ─── IMPORT EVENTS ───────────────────────────────────────────────────────
+    let importParsed = []; // holds validated rows from the chosen file
+
+    function openImportModal() {
+        console.log("[Import] Opening import modal");
+        importParsed = [];
+        els.importFileInput.value       = "";
+        els.importDropLabel.textContent = "";
+        els.importPreview.hidden        = true;
+        els.importPreviewList.innerHTML = "";
+        els.importError.hidden          = true;
+        els.importConfirmBtn.disabled   = true;
+        els.importDrop.classList.remove("has-file");
+        els.importModal.showModal();
+    }
+
+    function closeImportModal() {
+        els.importModal.close();
+    }
+
+    // Wire up import modal controls once (called from init)
+    function initImportModal() {
+        els.importCloseBtn.addEventListener("click",  closeImportModal);
+        els.importCancelBtn.addEventListener("click", closeImportModal);
+
+        // Clicking the drop zone triggers the hidden file input
+        els.importDrop.addEventListener("click", () => els.importFileInput.click());
+
+        // Drag-and-drop support
+        els.importDrop.addEventListener("dragover", e => {
+            e.preventDefault();
+            els.importDrop.classList.add("drag-over");
+        });
+        els.importDrop.addEventListener("dragleave", () => els.importDrop.classList.remove("drag-over"));
+        els.importDrop.addEventListener("drop", e => {
+            e.preventDefault();
+            els.importDrop.classList.remove("drag-over");
+            const file = e.dataTransfer.files[0];
+            if (file) handleImportFile(file);
+        });
+
+        els.importFileInput.addEventListener("change", () => {
+            const file = els.importFileInput.files[0];
+            if (file) handleImportFile(file);
+        });
+
+        els.importConfirmBtn.addEventListener("click", confirmImport);
+    }
+
+    function handleImportFile(file) {
+        console.log("[Import] File chosen:", file.name, "| size:", file.size, "bytes");
+        els.importDropLabel.textContent = "📄 " + file.name;
+        els.importDrop.classList.add("has-file");
+        els.importError.hidden          = true;
+        els.importPreview.hidden        = true;
+        els.importConfirmBtn.disabled   = true;
+        importParsed = [];
+
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (ext !== "json" && ext !== "csv") {
+            showImportError("Unsupported file type. Please use a .json or .csv file.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const raw = ext === "json"
+                    ? parseImportJSON(e.target.result)
+                    : parseImportCSV(e.target.result);
+
+                console.log("[Import] Parsed", raw.length, "row(s) from file");
+
+                const { valid, skipped, errors } = validateImportRows(raw);
+
+                console.log("[Import] Valid:", valid.length, "| Skipped (duplicates):", skipped, "| Errors:", errors.length);
+
+                if (errors.length) {
+                    showImportError("Some rows have errors and were ignored:\n" + errors.join("\n"));
+                }
+
+                if (!valid.length) {
+                    showImportError("No valid events found in the file." + (errors.length ? " See errors above." : ""));
+                    return;
+                }
+
+                importParsed = valid;
+                renderImportPreview(valid, skipped);
+                els.importConfirmBtn.disabled = false;
+
+            } catch (err) {
+                console.error("[Import] Parse error:", err);
+                showImportError("Could not read file: " + err.message);
+            }
+        };
+        reader.onerror = () => showImportError("Failed to read the file.");
+        reader.readAsText(file);
+    }
+
+    function parseImportJSON(text) {
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) throw new Error("JSON must be an array of event objects.");
+        return data;
+    }
+
+    function parseImportCSV(text) {
+        const lines  = text.replace(/\r/g, "").split("\n").filter(l => l.trim());
+        if (!lines.length) throw new Error("CSV file is empty.");
+
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+        console.log("[Import] CSV headers found:", headers);
+
+        return lines.slice(1).map((line, i) => {
+            // Handle quoted fields with commas inside
+            const cols = [];
+            let cur = "", inQ = false;
+            for (const ch of line) {
+                if (ch === '"') { inQ = !inQ; }
+                else if (ch === "," && !inQ) { cols.push(cur.trim()); cur = ""; }
+                else { cur += ch; }
+            }
+            cols.push(cur.trim());
+
+            const obj = {};
+            headers.forEach((h, idx) => { obj[h] = (cols[idx] || "").replace(/^"|"$/g, "").trim(); });
+            return obj;
+        });
+    }
+
+    function validateImportRows(rows) {
+        const valid   = [];
+        const errors  = [];
+        let   skipped = 0;
+
+        const VALID_COLORS  = ["default", "red", "blue", "green", ""];
+        const VALID_REMINDS = ["off", "popup", "15", "30", "60", ""];
+        const DATE_RE       = /^\d{4}-\d{2}-\d{2}$/;
+        const TIME_RE       = /^\d{2}:\d{2}$/;
+
+        rows.forEach((row, i) => {
+            const rowNum = i + 2; // 1-based, +1 for header
+
+            const title = (row.title || "").trim();
+            const date  = (row.date  || "").trim();
+
+            if (!title) { errors.push("Row " + rowNum + ": missing 'title'");  return; }
+            if (!date)  { errors.push("Row " + rowNum + ": missing 'date'");   return; }
+            if (!DATE_RE.test(date)) { errors.push("Row " + rowNum + ": invalid date '" + date + "' (use YYYY-MM-DD)"); return; }
+
+            const endDate    = (row.enddate    || row.endDate    || "").trim();
+            const start      = (row.start      || "").trim();
+            const end        = (row.end        || "").trim();
+            const description= (row.description|| "").trim();
+            const remindMode = (row.remindmode || row.remindMode || "off").trim() || "off";
+            const color      = (row.color      || "default").trim() || "default";
+
+            if (endDate && !DATE_RE.test(endDate)) { errors.push("Row " + rowNum + ": invalid endDate '" + endDate + "'"); return; }
+            if (start && !TIME_RE.test(start))      { errors.push("Row " + rowNum + ": invalid start time '" + start + "' (use HH:MM)"); return; }
+            if (end   && !TIME_RE.test(end))        { errors.push("Row " + rowNum + ": invalid end time '"   + end   + "' (use HH:MM)"); return; }
+            if (start && !end)  { errors.push("Row " + rowNum + ": 'start' set but 'end' missing"); return; }
+            if (!start && end)  { errors.push("Row " + rowNum + ": 'end' set but 'start' missing"); return; }
+            if (!VALID_COLORS.includes(color))      { errors.push("Row " + rowNum + ": unknown color '" + color + "' (use default/red/blue/green)"); return; }
+            if (!VALID_REMINDS.includes(remindMode)){ errors.push("Row " + rowNum + ": unknown remindMode '" + remindMode + "'"); return; }
+
+            // Duplicate check: same title + date already exists in current events
+            const isDuplicate = events.some(ev => ev.title === title && ev.date === date);
+            if (isDuplicate) {
+                console.log("[Import] Skipping duplicate:", title, date);
+                skipped++;
+                return;
+            }
+
+            valid.push({
+                id:          safeUUID(),
+                title,
+                date,
+                endDate:     endDate || date,
+                start:       start || null,
+                end:         end   || null,
+                description,
+                remindMode,
+                color:       color || "default"
+            });
+        });
+
+        return { valid, skipped, errors };
+    }
+
+    function renderImportPreview(valid, skipped) {
+        els.importPreviewCount.textContent = "✅ " + valid.length + " event" + (valid.length !== 1 ? "s" : "") + " ready to import";
+        els.importPreviewSkip.textContent  = skipped ? "⚠️ " + skipped + " duplicate" + (skipped !== 1 ? "s" : "") + " skipped" : "";
+
+        els.importPreviewList.innerHTML = "";
+        valid.slice(0, 50).forEach(ev => {
+            const row = document.createElement("div");
+            row.className = "import-preview-row";
+            if (ev.color && ev.color !== "default") row.dataset.color = ev.color;
+
+            const timeStr = ev.start ? ev.start + "–" + ev.end : "All day";
+            row.innerHTML =
+                '<span class="import-prev-title">' + escapeHtml(ev.title) + "</span>" +
+                '<span class="import-prev-date">'  + escapeHtml(ev.date)  + "</span>" +
+                '<span class="import-prev-time">'  + escapeHtml(timeStr)  + "</span>";
+            els.importPreviewList.appendChild(row);
+        });
+
+        if (valid.length > 50) {
+            const more = document.createElement("div");
+            more.className = "import-preview-more";
+            more.textContent = "+ " + (valid.length - 50) + " more…";
+            els.importPreviewList.appendChild(more);
+        }
+
+        els.importPreview.hidden = false;
+    }
+
+    function confirmImport() {
+        if (!importParsed.length) return;
+        console.log("[Import] Confirming import of", importParsed.length, "event(s)");
+
+        events.push(...importParsed);
+        saveEvents(events);
+
+        closeImportModal();
+        render();
+        renderDayPanel();
+        toast("✅ Imported " + importParsed.length + " event" + (importParsed.length !== 1 ? "s" : "") + "!");
+        console.log("[Import] ✅ Done. Total events now:", events.length);
+    }
+
+    function showImportError(msg) {
+        els.importError.textContent = msg;
+        els.importError.hidden      = false;
+        console.warn("[Import] Error shown to user:", msg);
+    }
+
+    function triggerDownload(content, filename, mime) {
+        const a = document.createElement("a");
+        a.href     = URL.createObjectURL(new Blob([content], { type: mime }));
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
 
     // ─── UTILS ───────────────────────────────────────────────────────────────
     function safeUUID() {
