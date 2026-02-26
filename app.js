@@ -181,7 +181,7 @@
         }).catch(err => console.error("[Cache] Failed to open cache:", err));
     }
 
-    // ─── PASSIVE REMINDERS ───────────────────────────────────────────────────
+    // ─── PASSIVE REMINDERS  ───────────────────────────────────────────────────
     function getNotifSent() {
         try { return JSON.parse(localStorage.getItem(NOTIF_SENT_KEY) || "{}"); }
         catch { return {}; }
