@@ -860,3 +860,34 @@ body.dark .btn.clear-custom{
 body.dark .btn.clear-custom:hover{
   background: #2563eb;
 }
+.pill-btn{
+  border:none;
+  padding:6px 14px;
+  border-radius:999px;
+  font-size:12px;
+  cursor:pointer;
+  background:#e3f2fd;
+  color:#1976d2;
+  font-weight:600;
+}
+
+.pill-btn:hover{
+  opacity:0.9;
+}
+
+.pill-btn.danger{
+  background:#ffe5e5;
+  color:#d32f2f;
+}
+.panel-heading {
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(145deg, #7c6e9f, #b9a4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+}
+
+.panel-heading + .day-item {
+  margin-top: 8px;
+}
