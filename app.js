@@ -87,7 +87,6 @@
                 console.log("[SW] Registered successfully, scope:", reg.scope);
                 console.log("[SW] State:", reg.active ? "active" : reg.installing ? "installing" : "waiting");
 
-                // Listen for messages from SW (e.g. debug logs forwarded from SW)
                 navigator.serviceWorker.addEventListener("message", e => {
                     if (e.data && e.data.type === "SW_LOG") {
                         console.log("[SW → Page]", e.data.msg);
@@ -96,13 +95,11 @@
             })
             .catch(err => {
                 console.error("[SW] Registration FAILED:", err);
-                console.error("[SW] Make sure sw.js is in the root directory (same level as index.html) and you are serving over HTTP/HTTPS, not file://");
+                console.error("[SW] Make sure sw.js is in the root directory and you are serving over HTTP/HTTPS, not file://");
             });
     }
 
     // ─── NOTIFICATION BANNER ─────────────────────────────────────────────────
-    // Browsers require a user gesture to call Notification.requestPermission().
-    // We show a banner; clicking "Enable" triggers the gesture-based prompt.
     function initNotificationBanner() {
         if (!("Notification" in window)) {
             console.warn("[Notif] Notification API not available in this browser");
@@ -122,7 +119,6 @@
             return;
         }
 
-        // permission === "default" — show banner unless user previously dismissed
         const dismissed = localStorage.getItem(BANNER_DISMISSED_KEY);
         if (dismissed) {
             console.log("[Notif] Banner was previously dismissed by user");
@@ -141,7 +137,7 @@
                     console.log("[Notif] ✅ Permission GRANTED");
                     toast("🔔 Notifications enabled!");
                     syncEventsToSW();
-                    checkPassiveReminders(); // run immediately after grant
+                    checkPassiveReminders();
                 } else if (perm === "denied") {
                     console.warn("[Notif] ❌ Permission DENIED by user");
                     toast("Notifications blocked. Enable them in browser settings.");
@@ -159,7 +155,6 @@
     }
 
     // ─── SYNC EVENTS TO SERVICE WORKER (via Cache Storage) ───────────────────
-    // SW reads from Cache Storage when the page is closed.
     function syncEventsToSW() {
         if (!("caches" in window)) {
             console.warn("[Cache] Cache Storage API not available");
@@ -173,7 +168,6 @@
                 console.log("[Cache] Events synced to Cache Storage —", events.length, "event(s)");
             });
 
-            // Also sync the already-sent-notification keys so SW doesn't double-fire
             const sent = getNotifSent();
             cache.put("notif-sent", new Response(JSON.stringify(sent), {
                 headers: { "Content-Type": "application/json" }
@@ -181,7 +175,7 @@
         }).catch(err => console.error("[Cache] Failed to open cache:", err));
     }
 
-    // ─── PASSIVE REMINDERS  ───────────────────────────────────────────────────
+    // ─── PASSIVE REMINDERS ───────────────────────────────────────────────────
     function getNotifSent() {
         try { return JSON.parse(localStorage.getItem(NOTIF_SENT_KEY) || "{}"); }
         catch { return {}; }
@@ -210,7 +204,7 @@
         const sent     = getNotifSent();
         let   dirty    = false;
 
-        // Prune sent keys that are not from today (keep storage clean)
+        // Prune sent keys that are not from today
         Object.keys(sent).forEach(k => {
             if (!k.startsWith(todayKey)) {
                 delete sent[k];
@@ -229,7 +223,7 @@
         }
 
         todayEvents.forEach(ev => {
-            const mins = parseInt(ev.remindMode, 10); // NaN for "off" and "popup"
+            const mins = parseInt(ev.remindMode, 10);
 
             if (!ev.start) {
                 console.log("[Reminders] Skipping '" + ev.title + "' — no start time set");
@@ -266,7 +260,6 @@
                 return;
             }
 
-            // ✅ Fire the notification
             const roundedMins = Math.round(diffMins);
             const timeLabel   = roundedMins >= 60 ? "1 hour" : roundedMins + " minute" + (roundedMins !== 1 ? "s" : "");
             const notifTitle  = "⏰ " + ev.title;
@@ -274,7 +267,6 @@
 
             console.log("[Reminders] 🔔 FIRING notification for '" + ev.title + "' — " + notifBody);
 
-            // Prefer to fire via Service Worker (works even when tab is hidden/backgrounded)
             if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                 console.log("[Reminders] Sending notification via Service Worker controller");
                 navigator.serviceWorker.controller.postMessage({
@@ -304,7 +296,6 @@
 
         if (dirty) {
             setNotifSent(sent);
-            // Keep SW in sync too
             syncEventsToSW();
         }
     }
@@ -414,6 +405,10 @@
 
             if (dayEvents.length > 0) anyMatch = true;
 
+            if (q && dayEvents.length === 0) {
+                cell.style.display = "none";
+            }
+
             cell.className = "cell";
             if (key === toDateKey(new Date())) cell.classList.add("today");
             if (key === selectedDate)           cell.classList.add("selected");
@@ -422,18 +417,6 @@
                 selectedDate = key; selectedEventId = null;
                 render(); renderDayPanel();
             });
-
-            if (q) {
-                let noResultEl = document.getElementById("noResults");
-                if (!noResultEl) {
-                    noResultEl = document.createElement("div");
-                    noResultEl.id = "noResults";
-                    Object.assign(noResultEl.style, { textAlign:"center", padding:"10px", fontWeight:"bold", color:"red" });
-                    els.grid.parentNode.appendChild(noResultEl);
-                }
-                noResultEl.textContent = anyMatch ? "" : "No events found";
-                noResultEl.style.display = anyMatch ? "none" : "block";
-            }
 
             const head  = document.createElement("div"); head.className = "date";
             const left  = document.createElement("span"); left.textContent = String(date.getDate());
@@ -462,6 +445,21 @@
             cell.appendChild(head); cell.appendChild(list);
             els.grid.appendChild(cell);
         });
+
+        // "No results" message for search
+        let noResultEl = document.getElementById("noResults");
+        if (!noResultEl) {
+            noResultEl = document.createElement("div");
+            noResultEl.id = "noResults";
+            Object.assign(noResultEl.style, { textAlign:"center", padding:"10px", fontWeight:"bold", color:"red" });
+            els.grid.parentNode.appendChild(noResultEl);
+        }
+        if (q && !anyMatch) {
+            noResultEl.textContent = "No events found";
+            noResultEl.style.display = "block";
+        } else {
+            noResultEl.style.display = "none";
+        }
     }
 
     // ─── RENDER DAY PANEL ────────────────────────────────────────────────────
@@ -632,12 +630,15 @@
             const desc   = ev.description ? "\n   Description: " + ev.description : "";
             const remind = ev.remindMode !== "off" ? "\n   🔔 Reminder: " + ev.remindMode : "";
             const color  = (ev.color && ev.color !== "default") ? "\n   Color: " + ev.color : "";
-            return "Event " + (i+1) + ":\n   Title: " + ev.title + "\n   Time: " + time + desc + remind + color;
+            return "Event " + (i+1) + ":\n   Title: " + ev.title + "\n   Date: " + ev.date + "\n   Time: " + time + desc + remind + color;
         }).join("\n\n---\n\n");
-        const a = document.createElement("a");
-        a.href     = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+        const blob = new Blob([content], { type: "text/plain" });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement("a");
+        a.href     = url;
         a.download = "my-calendar-events.txt";
         a.click();
+        URL.revokeObjectURL(url);
         toast("Events exported!");
     }
 
@@ -663,7 +664,7 @@
         localStorage.setItem(POPUP_SEEN_KEY, JSON.stringify(seen));
     }
 
-    // ─── CONFLICTS ───────────────────────────────────────────────────────────
+    // ─── SEARCH / CONFLICTS ─────────────────────────────────────────────────
     function formatSearch(ev) { return (ev.title + " " + (ev.description || "")).toLowerCase(); }
 
     function getEventsOnDate(dateKey) {
