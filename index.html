@@ -17,6 +17,15 @@
     </div>
   </header>
 
+  <!-- Notification permission banner — shown by JS when permission is "default"  -->
+  <div id="notifBanner" class="notif-banner" hidden>
+    <span>🔔 Enable notifications to get reminders for your events — even when this tab is in the background.</span>
+    <div class="notif-banner-actions">
+      <button id="notifAllowBtn" class="btn primary" type="button">Enable Notifications</button>
+      <button id="notifDismissBtn" class="btn ghost" type="button">Dismiss</button>
+    </div>
+  </div>
+
   <main class="wrap">
     <section class="panel">
       <div class="panel-head">
@@ -24,7 +33,6 @@
           <h2>Calendar</h2>
           <p class="muted">Click a date to view events. Select an event to Edit/Delete from the side.</p>
 
-          <!-- Month/Year moved here (top of calendar) -->
           <div class="monthbar">
             <button id="prevBtn" class="btn" type="button" aria-label="Previous month">←</button>
             
@@ -72,15 +80,12 @@
 
       <div id="dayList" class="day-list"></div>
 
-      <!-- SIDE BUTTONS: Add/Edit/Delete/Export -->
       <div class="panel-foot">
         <button id="addBtn" class="btn primary" type="button">+ Add Event</button>
         <button id="editBtn" class="btn" type="button">Edit</button>
         <button id="deleteSideBtn" class="btn danger" type="button">Delete</button>
         <button id="exportBtn" class="btn ghost" type="button">📥 Export</button>
-        <button id="clearAllBtn" class="btn clear-custom" type="button">
-  Clear All Events
-</button>
+        <button id="clearAllBtn" class="btn clear-custom" type="button">Clear All Events</button>
       </div>
     </aside>
   </main>
@@ -103,18 +108,24 @@
           <input id="titleInput" required maxlength="60" placeholder="e.g., Birthday / Meeting" />
         </label>
 
-        <label class="field">
-          <span>Event date *</span>
-          <input id="dateInput" type="date" required />
-        </label>
+        <div class="row">
+          <label class="field">
+            <span>Start date *</span>
+            <input id="dateInput" type="date" required />
+          </label>
+          <label class="field">
+            <span>End date</span>
+            <input id="endDateInput" type="date" />
+          </label>
+        </div>
 
         <div class="row">
           <label class="field">
-            <span>Start (optional)</span>
+            <span>Start time (optional)</span>
             <input id="startInput" type="time" />
           </label>
           <label class="field">
-            <span>End (optional)</span>
+            <span>End time (optional)</span>
             <input id="endInput" type="time" />
           </label>
         </div>
@@ -124,14 +135,29 @@
           <textarea id="descInput" rows="3" maxlength="500" placeholder="Optional notes"></textarea>
         </label>
 
-        <label class="field">
-          <span>Reminder</span>
-          <select id="remindInput">
-            <option value="off">Off</option>
-            <option value="popup">Popup (Yesterday + Today)</option>
-          </select>
-          <div class="hint">Popup will show once per day for events with Reminder enabled.</div>
-        </label>
+        <div class="row">
+          <label class="field">
+            <span>Reminder</span>
+            <select id="remindInput">
+              <option value="off">Off</option>
+              <option value="popup">Popup (day-of alert on open)</option>
+              <option value="60">🔔 Notify 1 hour before</option>
+              <option value="30">🔔 Notify 30 mins before</option>
+              <option value="15">🔔 Notify 15 mins before</option>
+            </select>
+            <div class="hint">Passive (🔔) reminders fire as OS notifications even when the tab is backgrounded. Requires notification permission.</div>
+          </label>
+  
+          <label class="field">
+            <span>Color</span>
+            <select id="colorInput">
+              <option value="default">Default</option>
+              <option value="red">Red</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+            </select>
+          </label>
+        </div>
 
         <div id="conflictBox" class="callout warn" hidden>
           <b>Conflict detected</b>
