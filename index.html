@@ -85,6 +85,7 @@
         <button id="editBtn" class="btn" type="button">Edit</button>
         <button id="deleteSideBtn" class="btn danger" type="button">Delete</button>
         <button id="exportBtn" class="btn ghost" type="button">📥 Export</button>
+        <button id="importBtn" class="btn ghost" type="button">📤 Import</button>
         <button id="clearAllBtn" class="btn clear-custom" type="button">Clear All Events</button>
       </div>
     </aside>
@@ -174,6 +175,47 @@
 
       <input type="hidden" id="idInput" />
     </form>
+  </dialog>
+
+
+  <!-- Import Modal -->
+  <dialog id="importModal" class="modal" aria-labelledby="importModalTitle">
+    <div class="modal-head">
+      <div>
+        <div id="importModalTitle" class="modal-title">📤 Import Events</div>
+        <div class="modal-sub">Bulk-add events from a .json or .csv file.</div>
+      </div>
+      <button id="importCloseBtn" class="btn ghost" type="button" aria-label="Close">✕</button>
+    </div>
+
+    <div class="import-body">
+
+      <label class="import-drop" id="importDrop">
+        <input type="file" id="importFileInput" accept=".json,.csv" hidden />
+        <div class="import-drop-inner">
+          <div class="import-drop-icon">📂</div>
+          <div class="import-drop-text">Click to choose or drag a file here</div>
+          <div class="import-drop-hint">Accepts <b>.json</b> or <b>.csv</b></div>
+          <div id="importDropLabel" class="import-drop-filename"></div>
+        </div>
+      </label>
+
+      <div id="importPreview" class="import-preview" hidden>
+        <div class="import-preview-head">
+          <span id="importPreviewCount"></span>
+          <span id="importPreviewSkip" class="import-skip-label"></span>
+        </div>
+        <div id="importPreviewList" class="import-preview-list"></div>
+      </div>
+
+      <div id="importError" class="callout warn" hidden></div>
+    </div>
+
+    <div class="modal-foot">
+      <div class="spacer"></div>
+      <button id="importCancelBtn"  class="btn ghost"   type="button">Cancel</button>
+      <button id="importConfirmBtn" class="btn primary" type="button" disabled>Import</button>
+    </div>
   </dialog>
 
   <script src="app.js"></script>
