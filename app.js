@@ -359,7 +359,19 @@ els.dateInput.addEventListener("change", () => {
       els.grid.appendChild(cell);
     });
   }
+function renderDayPanel(){
 
+<<<<<<< HEAD
+  const d = new Date(selectedDate + "T00:00:00");
+
+  // ✅ Only set date label (NOT heading text)
+  els.dayLabel.textContent = d.toLocaleDateString(undefined, {
+    weekday:"long",
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+  });
+=======
 
   function renderDayPanel(){
     const d = new Date(selectedDate + "T00:00:00");
@@ -371,9 +383,37 @@ els.dateInput.addEventListener("change", () => {
       .filter(ev => !q || formatSearch(ev).includes(q))
       .sort((a,b) => (a.start||'').localeCompare(b.start||''));
 
+>>>>>>> upstream/main
 
-    els.dayList.innerHTML = "";
+  els.dayList.innerHTML = "";
 
+<<<<<<< HEAD
+  const baseDate = new Date(selectedDate + "T00:00:00");
+
+  // =========================
+  // 🔵 SELECTED DAY EVENTS
+  // =========================
+
+  const selectedEvents = getEventsByDate(selectedDate)
+    .sort((a,b) => (a.start||"").localeCompare(b.start||""));
+
+  if(selectedEvents.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "day-item";
+    empty.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div class="title">No events</div>
+          <div class="tag">—</div>
+        </div>
+      </div>
+    `;
+    els.dayList.appendChild(empty);
+  } else {
+
+    selectedEvents.forEach(ev => {
+
+=======
 
     if(!dayEvents.length){
       const empty = document.createElement("div");
@@ -386,28 +426,47 @@ els.dateInput.addEventListener("change", () => {
 
 
     dayEvents.forEach(ev => {
+>>>>>>> upstream/main
       const item = document.createElement("div");
-      item.className = "day-item" + (selectedEventId === ev.id ? " selected" : "");
+      item.className = "day-item";
 
+<<<<<<< HEAD
+      const timeTag = (ev.start && ev.end)
+        ? `${ev.start}–${ev.end}`
+        : "All day";
+=======
 
       const tag = (ev.start && ev.end) ? `${ev.start}–${ev.end}` : "All day";
+>>>>>>> upstream/main
 
 
       item.innerHTML = `
-        <div class="top">
-          <div class="title">${escapeHtml(ev.title)}</div>
-          <div class="tag">${escapeHtml(tag)}</div>
-        </div>
-        <div class="meta">
-          ${ev.remindMode === "popup" ? "🔔 Popup reminder enabled<br/>" : ""}
-          ${ev.description ? escapeHtml(ev.description) : ""}
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div class="title">${escapeHtml(ev.title)}</div>
+            <div class="tag">${escapeHtml(timeTag)}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="pill-btn edit-btn">Edit</button>
+            <button class="pill-btn delete-btn">Delete</button>
+          </div>
         </div>
       `;
 
+<<<<<<< HEAD
+      item.querySelector(".edit-btn").addEventListener("click", () => {
+        openModalForEdit(ev.id);
+      });
+
+      item.querySelector(".delete-btn").addEventListener("click", () => {
+        editingId = ev.id;
+        onDelete();
+=======
 
       item.addEventListener("click", () => {
         selectedEventId = ev.id;
         renderDayPanel(); // update highlight
+>>>>>>> upstream/main
       });
 
 
@@ -415,7 +474,64 @@ els.dateInput.addEventListener("change", () => {
     });
   }
 
+<<<<<<< HEAD
+  // =========================
+  // 🔵 UPCOMING EVENTS (NEXT 3 DAYS ONLY)
+  // =========================
 
+  let upcomingEvents = [];
+
+  for(let i = 1; i <= 3; i++){
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(baseDate.getDate() + i);
+    const key = toDateKey(nextDate);
+    upcomingEvents = upcomingEvents.concat(getEventsByDate(key));
+  }
+
+  if(upcomingEvents.length){
+
+    const divider = document.createElement("div");
+    divider.className = "panel-heading";
+    divider.style.marginTop = "18px";
+    divider.textContent = "Upcoming Events";
+    els.dayList.appendChild(divider);
+
+    upcomingEvents
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .forEach(ev => {
+
+        const item = document.createElement("div");
+        item.className = "day-item";
+
+        item.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="title">${escapeHtml(ev.title)}</div>
+              <div class="tag">${ev.date}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="pill-btn edit-btn">Edit</button>
+              <button class="pill-btn delete-btn">Delete</button>
+            </div>
+          </div>
+        `;
+
+        item.querySelector(".edit-btn").addEventListener("click", () => {
+          openModalForEdit(ev.id);
+        });
+
+        item.querySelector(".delete-btn").addEventListener("click", () => {
+          editingId = ev.id;
+          onDelete();
+        });
+
+        els.dayList.appendChild(item);
+      });
+  }
+}
+=======
+
+>>>>>>> upstream/main
   // ---------- MODAL ----------
   function openModalForDate(dateKey){
     editingId = null;
