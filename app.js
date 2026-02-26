@@ -134,21 +134,35 @@
 
         els.notifAllowBtn.addEventListener("click", () => {
             console.log("[Notif] User clicked 'Enable Notifications' — requesting permission...");
-            Notification.requestPermission().then(perm => {
+
+            // Hide banner immediately on click — don't wait for the browser prompt to resolve
+            els.notifBanner.hidden = true;
+            localStorage.setItem(BANNER_DISMISSED_KEY, "1");
+
+            const onResult = (perm) => {
                 console.log("[Notif] Permission response:", perm);
-                els.notifBanner.hidden = true;
                 if (perm === "granted") {
                     console.log("[Notif] ✅ Permission GRANTED");
                     toast("🔔 Notifications enabled!");
                     syncEventsToSW();
-                    checkPassiveReminders(); // run immediately after grant
+                    checkPassiveReminders();
                 } else if (perm === "denied") {
                     console.warn("[Notif] ❌ Permission DENIED by user");
                     toast("Notifications blocked. Enable them in browser settings.");
                 } else {
                     console.log("[Notif] User dismissed the browser prompt (no choice made)");
                 }
-            });
+            };
+
+            // Support both Promise (modern) and callback (old Firefox) APIs
+            try {
+                const result = Notification.requestPermission(onResult);
+                if (result && typeof result.then === "function") {
+                    result.then(onResult);
+                }
+            } catch (err) {
+                console.error("[Notif] requestPermission() threw:", err);
+            }
         });
 
         els.notifDismissBtn.addEventListener("click", () => {
