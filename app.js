@@ -160,6 +160,20 @@
         els.cancelBtn.addEventListener("click", closeModal);
         els.backdrop.addEventListener("click", closeModal);
 
+        // Auto-suggest titles while typing
+        els.titleInput.addEventListener("input", () => {
+            const { titleFrequency } = analyzeEventPatterns();
+            const input = els.titleInput.value.toLowerCase();
+
+            const suggestions = Object.keys(titleFrequency)
+                .filter(title => title.toLowerCase().startsWith(input))
+                .sort((a, b) => titleFrequency[b] - titleFrequency[a]);
+
+            if (suggestions.length > 0 && input.length > 0) {
+                els.titleInput.setAttribute("placeholder", `Suggested: ${suggestions[0]}`);
+            }
+        });
+
         els.eventForm.addEventListener("submit", (e) => {
             e.preventDefault();
             onSave();
@@ -170,6 +184,29 @@
         ["dateInput", "endDateInput", "startInput", "endInput"].forEach(id =>
             $(id).addEventListener("input", () => updateConflictWarning(editingId))
         );
+
+        // Smart time suggestion based on weekday
+        els.dateInput.addEventListener("change", () => {
+            const { weekdayTimePatterns } = analyzeEventPatterns();
+            const selectedDateVal = new Date(els.dateInput.value + "T00:00:00");
+            const weekday = selectedDateVal.getDay();
+
+            if (weekdayTimePatterns[weekday]) {
+                const sortedTimes = Object.entries(weekdayTimePatterns[weekday])
+                    .sort((a, b) => b[1] - a[1]);
+
+                if (sortedTimes.length > 0) {
+                    const [timeRange] = sortedTimes[0];
+                    const [start, end] = timeRange.split("-");
+
+                    // Only autofill if empty
+                    if (!els.startInput.value && !els.endInput.value) {
+                        els.startInput.value = start;
+                        els.endInput.value = end;
+                    }
+                }
+            }
+        });
     }
 
     // ---------- RENDER CALENDAR ----------
@@ -566,6 +603,32 @@
             return;
         }
         els.conflictBox.hidden = detectConflicts(d, excludeId).length === 0;
+    }
+
+    // ---------- SMART PATTERN ANALYSIS ----------
+    function analyzeEventPatterns() {
+        const titleFrequency = {};
+        const weekdayTimePatterns = {};
+
+        events.forEach(ev => {
+            if (ev.title) {
+                titleFrequency[ev.title] = (titleFrequency[ev.title] || 0) + 1;
+            }
+
+            if (ev.start && ev.end) {
+                const weekday = new Date(ev.date + "T00:00:00").getDay();
+
+                if (!weekdayTimePatterns[weekday]) {
+                    weekdayTimePatterns[weekday] = {};
+                }
+
+                const timeKey = `${ev.start}-${ev.end}`;
+                weekdayTimePatterns[weekday][timeKey] =
+                    (weekdayTimePatterns[weekday][timeKey] || 0) + 1;
+            }
+        });
+
+        return { titleFrequency, weekdayTimePatterns };
     }
 
     // ---------- LOCAL STORAGE ----------
