@@ -12,6 +12,7 @@
         searchInput: $("searchInput"),
         dayLabel: $("dayLabel"),
         dayList: $("dayList"),
+        noResults: $("noResults"),
 
         addBtn: $("addBtn"),
         editBtn: $("editBtn"),
@@ -20,7 +21,6 @@
         clearAllBtn: $("clearAllBtn"),
 
         modal: $("eventModal"),
-        backdrop: $("backdrop"),
         eventForm: $("eventForm"),
         closeBtn: $("closeBtn"),
         cancelBtn: $("cancelBtn"),
@@ -158,15 +158,14 @@
 
         els.closeBtn.addEventListener("click", closeModal);
         els.cancelBtn.addEventListener("click", closeModal);
-        els.backdrop.addEventListener("click", closeModal);
 
         // Auto-suggest titles while typing
         els.titleInput.addEventListener("input", () => {
             const { titleFrequency } = analyzeEventPatterns();
-            const input = els.titleInput.value.toLowerCase();
+            const input = normalizeStr(els.titleInput.value);
 
             const suggestions = Object.keys(titleFrequency)
-                .filter(title => title.toLowerCase().startsWith(input))
+                .filter(title => normalizeStr(title).startsWith(input))
                 .sort((a, b) => titleFrequency[b] - titleFrequency[a]);
 
             if (suggestions.length > 0 && input.length > 0) {
@@ -231,7 +230,7 @@
         while (cells.length % 7 !== 0) cells.push({ empty: true });
         while (cells.length < 42) cells.push({ empty: true });
 
-        const q = (els.searchInput.value || "").trim().toLowerCase();
+        const q = normalizeStr(els.searchInput.value).trim();
 
         els.grid.innerHTML = "";
         cells.forEach(cellData => {
@@ -316,21 +315,10 @@
         });
 
         // "No results" message for search
-        let noResultEl = document.getElementById("noResults");
-        if (!noResultEl) {
-            noResultEl = document.createElement("div");
-            noResultEl.id = "noResults";
-            noResultEl.style.textAlign = "center";
-            noResultEl.style.padding = "10px";
-            noResultEl.style.fontWeight = "bold";
-            noResultEl.style.color = "red";
-            els.grid.parentNode.appendChild(noResultEl);
-        }
         if (q && !anyMatch) {
-            noResultEl.textContent = "No events found";
-            noResultEl.style.display = "block";
+            els.noResults.style.display = "block";
         } else {
-            noResultEl.style.display = "none";
+            els.noResults.style.display = "none";
         }
     }
 
@@ -343,7 +331,7 @@
             day: "numeric"
         });
 
-        const q = (els.searchInput.value || "").trim().toLowerCase();
+        const q = normalizeStr(els.searchInput.value).trim();
         const dayEvents = getEventsOnDate(selectedDate)
             .filter(ev => !q || formatSearch(ev).includes(q))
             .sort((a, b) => (a.start || "").localeCompare(b.start || ""));
@@ -525,13 +513,11 @@
     }
 
     function showModal() {
-        els.backdrop.hidden = false;
         els.modal.showModal();
     }
 
     function closeModal() {
         els.modal.close();
-        els.backdrop.hidden = true;
     }
 
     // ---------- EXPORT EVENTS ----------
@@ -570,7 +556,7 @@
 
     // ---------- SEARCH / CONFLICTS ----------
     function formatSearch(ev) {
-        return (ev.title + " " + (ev.description || "")).toLowerCase();
+        return normalizeStr(ev.title + " " + (ev.description || ""));
     }
 
     function getEventsOnDate(dateKey) {
@@ -699,6 +685,10 @@
     }
 
     // ---------- UTILS ----------
+    function normalizeStr(str) {
+        return (str || "").toString().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
     function safeUUID() {
         return (crypto && crypto.randomUUID)
             ? crypto.randomUUID()
