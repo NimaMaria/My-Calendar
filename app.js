@@ -230,7 +230,7 @@
         while (cells.length % 7 !== 0) cells.push({ empty: true });
         while (cells.length < 42) cells.push({ empty: true });
 
-        const q = (els.searchInput.value || "").trim().toLowerCase();
+        const q = normalizeStr(els.searchInput.value).trim();
 
         els.grid.innerHTML = "";
         cells.forEach(cellData => {
@@ -331,7 +331,7 @@
             day: "numeric"
         });
 
-        const q = (els.searchInput.value || "").trim().toLowerCase();
+        const q = normalizeStr(els.searchInput.value).trim();
         const dayEvents = getEventsOnDate(selectedDate)
             .filter(ev => !q || formatSearch(ev).includes(q))
             .sort((a, b) => (a.start || "").localeCompare(b.start || ""));
@@ -556,7 +556,7 @@
 
     // ---------- SEARCH / CONFLICTS ----------
     function formatSearch(ev) {
-        return (ev.title + " " + (ev.description || "")).toLowerCase();
+        return normalizeStr(ev.title + " " + (ev.description || ""));
     }
 
     function getEventsOnDate(dateKey) {
@@ -685,6 +685,10 @@
     }
 
     // ---------- UTILS ----------
+    function normalizeStr(str) {
+        return (str || "").toString().toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
     function safeUUID() {
         return (crypto && crypto.randomUUID)
             ? crypto.randomUUID()
