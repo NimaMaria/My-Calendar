@@ -39,6 +39,7 @@
         descInput: $("descInput"),
         remindInput: $("remindInput"),
         colorInput: $("colorInput"),
+        recurrenceInput: $("recurrenceInput"),   
 
         conflictBox: $("conflictBox"),
     };
@@ -446,7 +447,7 @@ function createEventCard(ev, showDate = false) {
         els.descInput.value = "";
         els.remindInput.value = "off";
         els.colorInput.value = "default";
-
+        els.recurrenceInput.value = "none";   
         els.conflictBox.hidden = true;
         showModal();
     }
@@ -472,7 +473,7 @@ function createEventCard(ev, showDate = false) {
         els.descInput.value = ev.description || "";
         els.remindInput.value = ev.remindMode || "off";
         els.colorInput.value = ev.color || "default";
-
+        els.recurrenceInput.value = ev.recurrence || "none";   
         updateConflictWarning(editingId);
         showModal();
     }
@@ -480,16 +481,17 @@ function createEventCard(ev, showDate = false) {
     function draftFromForm() {
         const id = els.idInput.value || editingId || safeUUID();
         return {
-            id,
-            title: els.titleInput.value.trim(),
-            date: els.dateInput.value,
-            endDate: els.endDateInput.value,
-            start: els.startInput.value || null,
-            end: els.endInput.value || null,
-            description: els.descInput.value.trim(),
-            remindMode: els.remindInput.value,
-            color: els.colorInput.value
-        };
+    id,
+    title: els.titleInput.value.trim(),
+    date: els.dateInput.value,
+    endDate: els.endDateInput.value,
+    start: els.startInput.value || null,
+    end: els.endInput.value || null,
+    description: els.descInput.value.trim(),
+    remindMode: els.remindInput.value,
+    color: els.colorInput.value,
+    recurrence: els.recurrenceInput.value || "none"   
+};
     }
 
     function onSave() {
@@ -606,13 +608,46 @@ function createEventCard(ev, showDate = false) {
     }
 
     function getEventsOnDate(dateKey) {
-        const d = new Date(dateKey + "T00:00:00");
-        return events.filter(ev => {
-            const eventStart = new Date(ev.date + "T00:00:00");
-            const eventEnd = ev.endDate ? new Date(ev.endDate + "T00:00:00") : eventStart;
-            return d >= eventStart && d <= eventEnd;
-        });
-    }
+    const d = new Date(dateKey + "T00:00:00");
+
+    return events.filter(ev => {
+        const start = new Date(ev.date + "T00:00:00");
+
+        // Non-recurring event
+        if (!ev.recurrence || ev.recurrence === "none") {
+            const end = ev.endDate
+                ? new Date(ev.endDate + "T00:00:00")
+                : start;
+
+            return d >= start && d <= end;
+        }
+
+        // Recurring events
+        if (d < start) return false;
+
+        const diffDays = Math.floor((d - start) / (1000 * 60 * 60 * 24));
+
+        switch (ev.recurrence) {
+            case "daily":
+                return true;
+
+            case "weekly":
+                return diffDays % 7 === 0;
+
+            case "monthly":
+                return d.getDate() === start.getDate();
+
+            case "yearly":
+                return (
+                    d.getDate() === start.getDate() &&
+                    d.getMonth() === start.getMonth()
+                );
+
+            default:
+                return false;
+        }
+    });
+}
 
     function detectConflicts(candidate, excludeId = null) {
         if (!candidate.start || !candidate.end) return [];
