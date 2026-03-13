@@ -411,7 +411,11 @@
             els.grid.appendChild(cell);
         });
 
+        supreme
+        supreme
+
          master
+        main
         // "No results" message for search
         els.noResults.hidden = !(q && !anyMatch);
 
